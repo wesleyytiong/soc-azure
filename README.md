@@ -57,16 +57,16 @@ Stop Time 2024-09-03T17:07:45
 ## Metrics After Hardening / Security Controls
 
 The following table shows the metrics we measured in our environment for another 24 hours, but after we have applied security controls:
-Start Time -
-Stop Time	-
+Start Time 2024-09-03T19:35:07
+Stop Time	2024-09-04T19:35:07
 
 | Metric                   | Count
 | ------------------------ | -----
-| SecurityEvent            | -
-| Syslog                   | -
-| SecurityAlert            | -
-| SecurityIncident         | -
-| AzureNetworkAnalytics_CL | -
+| SecurityEvent            | 18440
+| Syslog                   | 0
+| SecurityAlert            | 0
+| SecurityIncident         | 0
+| AzureNetworkAnalytics_CL | 0
 
 ## Conclusion
 
