@@ -125,6 +125,12 @@ Stop Time 2024-09-03T17:07:45
 
 ```All map queries actually returned no results due to no instances of malicious activity for the 24 hour period after hardening```
 
+## Hardening Environment
+### Implemented NIST 800-53 SC-7 (Boundary Protection) for Security Controls
+- Configured the Network Security Group (NSG) associated with the VM/Subnet to allow traffic exclusively from the designated Virtual Network (VNet). This restriction ensures that only traffic from within the same VNet is permitted, effectively enhancing the security of the VM/Subnet.
+- Configure Azure Private Link and Firewall for Azure Key Vault (configuring firewall to allow access only from specifed VNet) and Azure Storage Account (disabling public access by setting "allow blob public access" and restricting access to selected networks only)
+- Verify configuration using Network Watcher (to observe topology and confirm key vault and storage account private endpoints were correctly set up) and IP Address Check (logging into ```windows-vm``` and checked IP addresses of Key Vault and Storage Account instances to ensure they have private IP addresses
+  
 ## Metrics After Hardening / Security Controls
 
 The following table shows the metrics we measured in our environment for another 24 hours, but after we have applied security controls:
