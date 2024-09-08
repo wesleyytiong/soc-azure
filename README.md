@@ -146,4 +146,4 @@ After the initial 24 hours, I applied security controls to harden the environmen
 - The number of security events significantly decreased.
 - Alerts triggered by Sentinel dropped, and the flow of malicious traffic was put to a halt
 - Queries on Azure Activity Logs showed a reduction in resource deletions and security-related changes
-In conclusion, the logs generated before and after security hardening demonstrate the effectiveness of the applied security controls in reducing security incidents and protecting the infrastructure
+### In conclusion, the logs generated before and after security hardening demonstrate the effectiveness of the applied security controls in reducing security incidents and protecting the infrastructure
