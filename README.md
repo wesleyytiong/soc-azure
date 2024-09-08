@@ -43,11 +43,124 @@ For the "BEFORE" metrics, all resources were originally deployed, exposed to the
 For the "AFTER" metrics, Network Security Groups were hardened by blocking ALL traffic with the exception of my admin workstation, and all other resources were protected by their built-in firewalls as well as Private Endpoint
 
 ## Attack Maps Before Hardening / Security Controls
-NSG Allowed Inbound Malicious Flows
+## NSG Allowed Inbound Malicious Flows
+### The query below analyzes malicious network flows captured in the Azure Network Analytics logs, extracts details like the source and destination IPs, ports, and protocols, and enriches this data with geolocation information using a GeoIP database. The output includes details about the malicious flow, as well as where the attacks are originating from:
+```
+// Load the watchlist "geoip", which contains geolocation data for IP addresses
+let GeoIPDB_FULL = _GetWatchlist("geoip");
+
+// Query Azure Network Analytics logs for flows labeled as "MaliciousFlow"
+let MaliciousFlows = AzureNetworkAnalytics_CL 
+| where FlowType_s == "MaliciousFlow"   // Filter for malicious network flows
+| order by TimeGenerated desc   // Order the results by time in descending order (most recent first)
+| project 
+    TimeGenerated,   // Keep the time the flow was generated
+    FlowType = FlowType_s,   // Keep the flow type, rename FlowType_s to FlowType
+    IpAddress = SrcIP_s,   // Rename SrcIP_s (source IP) to IpAddress
+    DestinationIpAddress = DestIP_s,   // Rename DestIP_s (destination IP) to DestinationIpAddress
+    DestinationPort = DestPort_d,   // Keep the destination port number
+    Protocol = L7Protocol_s,   // Keep the layer 7 protocol (e.g., HTTP, HTTPS)
+    NSGRuleMatched = NSGRules_s;   // Keep the network security group (NSG) rule that matched the flow
+
+// Perform an IP lookup using the GeoIP database to find geographic information for the source IPs
+MaliciousFlows
+| evaluate ipv4_lookup(GeoIPDB_FULL, IpAddress, network)
+
+// Project the final set of fields for the output
+| project 
+    TimeGenerated,   // The timestamp of the flow
+    FlowType,   // The type of flow (MaliciousFlow)
+    IpAddress,   // The source IP address
+    DestinationIpAddress,   // The destination IP address
+    DestinationPort,   // The destination port
+    Protocol,   // The layer 7 protocol
+    NSGRuleMatched,   // The NSG rule that matched this flow
+    latitude,   // The latitude from the GeoIP lookup
+    longitude,   // The longitude from the GeoIP lookup
+    city = cityname,   // The city name from the GeoIP lookup
+    country = countryname,   // The country name from the GeoIP lookup
+    friendly_location = strcat(cityname, " (", countryname, ")");   // Create a friendly location string that combines the city and country
+```
 ![NSG Allowed Inbound Malicious Flows](https://github.com/wesleyytiong/soc-azure/blob/main/images/(before)-nsg-malicious-allowed-in-24h.png)<br>
-Linux Syslog Auth Failures
+## Linux Syslog Auth Failures
+### The query below is designed to analyze failed login attempts from syslog, extract the source IP addresses, look up their geographic locations using a GeoIP database, and display key information about the source and destination of these attempts, including where in the world the attempts are coming from:
+```// Load the watchlist "geoip", which contains geolocation data for IP addresses
+let GeoIPDB_FULL = _GetWatchlist("geoip");
+
+// Define a regular expression pattern to extract IPv4 addresses in the format xxx.xxx.xxx.xxx
+let IpAddress_REGEX_PATTERN = @"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b";
+
+// Query the Syslog data
+Syslog
+| where Facility == "auth"   // Filter to only include logs from the "auth" facility (authentication logs)
+| where SyslogMessage startswith "Failed password for"   // Only include logs that start with "Failed password for" (failed login attempts)
+| order by TimeGenerated desc   // Order the logs by the time they were generated, with the most recent entries first
+| project 
+    TimeGenerated,   // Keep the time the log was generated
+    SourceIP = extract(IpAddress_REGEX_PATTERN, 0, SyslogMessage),   // Extract the source IP address from the Syslog message using the regex pattern
+    DestinationHostName = HostName,   // Rename "HostName" to "DestinationHostName"
+    DestinationIP = HostIP,   // Rename "HostIP" to "DestinationIP"
+    Facility,   // Keep the "Facility" field
+    SyslogMessage,   // Keep the original syslog message
+    ProcessName,   // Keep the process name responsible for the log
+    SeverityLevel,   // Keep the severity level of the log
+    Type   // Keep the log type
+
+// Perform an IP lookup using the GeoIP database to find geographic information for the source IPs
+| evaluate ipv4_lookup(GeoIPDB_FULL, SourceIP, network)
+
+// Project the final set of fields for the output
+| project 
+    TimeGenerated,   // The timestamp of the log
+    SourceIP,   // The source IP address extracted earlier
+    DestinationHostName,   // The destination hostname
+    DestinationIP,   // The destination IP
+    Facility,   // The facility responsible for the log (auth)
+    SyslogMessage,   // The original syslog message
+    ProcessName,   // The name of the process
+    SeverityLevel,   // The severity level of the log
+    Type,   // The type of the log
+    latitude,   // The latitude from the GeoIP lookup
+    longitude,   // The longitude from the GeoIP lookup
+    city = cityname,   // The city name from the GeoIP lookup
+    country = countryname,   // The country name from the GeoIP lookup
+    friendly_location = strcat(cityname, " (", countryname, ")");   // Create a friendly location string that combines the city and country
+```
 ![Linux Syslog Auth Failures](https://github.com/wesleyytiong/soc-azure/blob/main/images/(before)-syslog-ssh-auth-fail-24h.png)<br>
-Windows RDP/SMB Auth Failures
+## Windows RDP/SMB Auth Failures
+### The query below extracts failed logon attempts (Event ID 4625) from Windows security logs, matches the source IP address with geographic location data using the GeoIP watchlist, and outputs details such as the account name, computer, logon type, and geographic location of the IP address attempting the logon:
+```// Load the watchlist "geoip", which contains geolocation data for IP addresses
+let GeoIPDB_FULL = _GetWatchlist("geoip");
+
+// Query the SecurityEvent table for Windows events
+let WindowsEvents = SecurityEvent;
+
+// Filter for Event ID 4625, which corresponds to failed logon attempts
+WindowsEvents 
+| where EventID == 4625   // EventID 4625 is for "An account failed to log on"
+| order by TimeGenerated desc   // Order by the time the event was generated, with the most recent first
+
+// Perform an IP lookup using the GeoIP database to find geographic information for the source IPs
+| evaluate ipv4_lookup(GeoIPDB_FULL, IpAddress, network)
+
+// Project the final set of fields for the output
+| project 
+    TimeGenerated,   // The timestamp of the event
+    Account,   // The account that attempted the failed logon
+    AccountType,   // The type of account (e.g., user, system)
+    Computer,   // The computer name where the event was logged
+    EventID,   // The Event ID (4625 for failed logon)
+    Activity,   // The activity related to the logon (failed logon in this case)
+    IpAddress,   // The IP address attempting the logon
+    LogonTypeName,   // The type of logon (e.g., interactive, remote)
+    network,   // The network associated with the IP lookup
+    latitude,   // The latitude from the GeoIP lookup
+    longitude,   // The longitude from the GeoIP lookup
+    city = cityname,   // The city name from the GeoIP lookup
+    country = countryname,   // The country name from the GeoIP lookup
+    friendly_location = strcat(cityname, " (", countryname, ")");   // Create a friendly location string that combines the city and country
+```
+
 ![Windows RDP/SMB Auth Failures](https://github.com/wesleyytiong/soc-azure/blob/main/images/(before)-windows-rdp-smb-auth-fail-24h.png)<br>
 
 ## Metrics Before Hardening / Security Controls
@@ -66,7 +179,7 @@ Stop Time 2024-09-03T17:07:45
 
 ## Attack Maps Before Hardening / Security Controls
 
-```All map queries actually returned no results due to no instances of malicious activity for the 24 hour period after hardening.```
+```All map queries actually returned no results due to no instances of malicious activity for the 24 hour period after hardening```
 
 ## Metrics After Hardening / Security Controls
 
