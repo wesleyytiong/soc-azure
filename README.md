@@ -17,7 +17,7 @@ This project demonstrates building a mini honeynet in Azure, where various logs 
 ## Architecture After Hardening / Security Controls
 ![Architecture Diagram](https://i.imgur.com/YQNa9Pp.jpg)
 
-The architecture of the mini honeynet in Azure consists of the following components:
+The architecture of the honeynet in Azure consists of the following components:
 
 - Virtual Machines (2 Windows, 1 Linux)
 - Virtual Network (VNet)
@@ -27,12 +27,16 @@ The architecture of the mini honeynet in Azure consists of the following compone
 - Azure Storage Account
 - Microsoft Sentinel
 
-### Key Setup Steps:
-- NSG Flow Logs: Enabled Flow Logs for both NSGs, ensuring logs were sent to our Log Analytics workspace. If the logs weren’t showing, a new storage account was created in the correct region to match the VMs.
-- Data Collection Rules (DCR): Configured DCRs for the VMs to ensure Windows Security events and Linux Syslog data were ingested into Sentinel. The agent for both VMs was verified to ensure successful provisioning.
-- Content Hub: Installed “Windows Security Events” and “Syslog” from the Sentinel Content Hub for proper log collection from Windows and Linux sources, respectively.
+## Key Setup Steps
+### AAD/Tenant Logs (Identity-Level Monitoring)
+- Azure AD (Microsoft Entra ID) Logging: Configured logging for Azure AD to collect both Audit and Sign-in logs. This involved generating logs and analyzing the changes within Log Analytics Workspace using KQL queries.
+### Resource Plane (Resource-Level Monitoring)
+- NSG Flow Logs: Enabled Flow Logs for both NSGs, ensuring logs were sent to the Log Analytics workspace
+- Content Hub: Installed “Windows Security Events” (specifically, ```EventID = 4625``` for failed login attempts via RDP/SMB, and ```EventID = 18456``` in application logs for login attempts to MS SQL Server) and “Syslog” (capturing logs from ```/var/logs/```) from the Sentinel Content Hub. This ensures comprehensive log collection from Windows and Linux sources, respectively.
+- Data Collection Rules (DCR): Configured Data Collection Rules for the VMs using the Azure Monitoring Agent (AMA) to ensure that Windows Security events and Linux Syslog data were properly ingested into Sentinel. Verified successful provisioning of the agent on both VMs.
+### Management Plane (Subscription-Level Monitoring)
 - Azure Activity Logs: Set up queries to monitor resource activities, such as the creation and deletion of Resource Groups, changes to NSGs, and activities related to security incidents.
-- Azure AD (Microsoft Entra ID) Logging: Configured logging for Azure AD to collect both Audit and Sign-in logs. This involved generating logs by creating and deleting a “dummy_user” and analyzing the changes within Log Analytics Workspace using KQL queries.
+- Azure Sentinel: Created and configured watchlists using ```geoip.csv``` to monitor and analyze malicious traffic, enabling Microsoft Defender for Cloud to forward logs from servers, key vaults, and storage accounts to the Log Analytics Workspace, and imported and managed custom analytics rules to detect and respond to security threats.
 
 For the "BEFORE" metrics, all resources were originally deployed, exposed to the internet. The Virtual Machines had both their Network Security Groups and built-in firewalls wide open, and all other resources are deployed with public endpoints visible to the Internet; aka, no use for Private Endpoints.
 
