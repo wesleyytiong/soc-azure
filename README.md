@@ -44,7 +44,7 @@ For the "AFTER" metrics, Network Security Groups were hardened by blocking ALL t
 
 ## Attack Maps Before Hardening / Security Controls
 ## NSG Allowed Inbound Malicious Flows
-### The query below analyzes malicious network flows captured in the Azure Network Analytics logs, extracts details like the source and destination IPs, ports, and protocols, and enriches this data with geolocation information using a GeoIP database. The output includes details about the malicious flow, as well as where the attacks are originating from:
+### The query below analyzes malicious network flows captured in the Azure Network Analytics logs, extracts details like the source and destination IPs, ports, and protocols, and enriches this data with geolocation information using a GeoIP database. The output includes details about the malicious flow, as well as where the attacks are originating from
 ```
 // Load the watchlist "geoip", which contains geolocation data for IP addresses
 let GeoIPDB_FULL = _GetWatchlist("geoip");
@@ -144,6 +144,6 @@ Stop Time	2024-09-04T19:35:07
 After the initial 24 hours, I applied security controls to harden the environment. This included restricting NSG traffic to only allow my admin workstation and enabling firewalls and private endpoints for Azure resources. The following results were observed:
 
 - The number of security events significantly decreased.
-- Alerts triggered by Sentinel dropped, and the flow of malicious traffic was curtailed.
-- Queries on Azure Activity Logs showed a reduction in resource deletions and security-related changes.
-- In both Admin Mode and Attacker Mode, I simulated various user behaviors, from brute force attacks to role assignments in Azure AD, and observed these activities within the logs. The logs demonstrated the effectiveness of the applied security controls in reducing security incidents and protecting the infrastructure.
+- Alerts triggered by Sentinel dropped, and the flow of malicious traffic was put to a halt
+- Queries on Azure Activity Logs showed a reduction in resource deletions and security-related changes
+In conclusion, the logs generated before and after security hardening demonstrate the effectiveness of the applied security controls in reducing security incidents and protecting the infrastructure
