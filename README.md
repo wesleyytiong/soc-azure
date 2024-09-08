@@ -3,13 +3,13 @@
 
 ## Introduction
 
-In this project, I build a mini honeynet in Azure and ingest log sources from various resources into a Log Analytics workspace, which is then used by Microsoft Sentinel to build attack maps, trigger alerts, and create incidents. I measured some security metrics in the insecure environment for 24 hours, apply some security controls to harden the environment, measure metrics for another 24 hours, then show the results below. The metrics we will show are:
+This project demonstrates building a mini honeynet in Azure, where various logs are collected and analyzed using a Log Analytics workspace and Microsoft Sentinel. Over a 24-hour period, I measured key security metrics in an unprotected environment, applied security controls, and measured the metrics again over the next 24 hours. The metrics include:
 
 - SecurityEvent (Windows Event Logs)
 - Syslog (Linux Event Logs)
-- SecurityAlert (Log Analytics Alerts Triggered)
+- SecurityAlert (Alerts from Log Analytics)
 - SecurityIncident (Incidents created by Sentinel)
-- AzureNetworkAnalytics_CL (Malicious Flows allowed into our honeynet)
+- AzureNetworkAnalytics_CL (NSG Flow Logs)
 
 ## Architecture Before Hardening / Security Controls
 ![Architecture Diagram](https://i.imgur.com/aBDwnKb.jpg)
@@ -19,13 +19,20 @@ In this project, I build a mini honeynet in Azure and ingest log sources from va
 
 The architecture of the mini honeynet in Azure consists of the following components:
 
+- Virtual Machines (2 Windows, 1 Linux)
 - Virtual Network (VNet)
 - Network Security Group (NSG)
-- Virtual Machines (2 windows, 1 linux)
 - Log Analytics Workspace
 - Azure Key Vault
 - Azure Storage Account
 - Microsoft Sentinel
+
+### Key Setup Steps:
+- NSG Flow Logs: Enabled Flow Logs for both NSGs, ensuring logs were sent to our Log Analytics workspace. If the logs weren’t showing, a new storage account was created in the correct region to match the VMs.
+- Data Collection Rules (DCR): Configured DCRs for the VMs to ensure Windows Security events and Linux Syslog data were ingested into Sentinel. The agent for both VMs was verified to ensure successful provisioning.
+- Content Hub: Installed “Windows Security Events” and “Syslog” from the Sentinel Content Hub for proper log collection from Windows and Linux sources, respectively.
+- Azure Activity Logs: Set up queries to monitor resource activities, such as the creation and deletion of Resource Groups, changes to NSGs, and activities related to security incidents.
+- Azure AD (Microsoft Entra ID) Logging: Configured logging for Azure AD to collect both Audit and Sign-in logs. This involved generating logs by creating and deleting a “dummy_user” and analyzing the changes within Log Analytics Workspace using KQL queries.
 
 For the "BEFORE" metrics, all resources were originally deployed, exposed to the internet. The Virtual Machines had both their Network Security Groups and built-in firewalls wide open, and all other resources are deployed with public endpoints visible to the Internet; aka, no use for Private Endpoints.
 
@@ -71,8 +78,11 @@ Stop Time	2024-09-04T19:35:07
 | SecurityIncident         | 0
 | AzureNetworkAnalytics_CL | 0
 
-## Conclusion
+## Results
 
-In this project, a mini honeynet was constructed in Microsoft Azure and log sources were integrated into a Log Analytics workspace. Microsoft Sentinel was employed to trigger alerts and create incidents based on the ingested logs. Additionally, metrics were measured in the insecure environment before security controls were applied, and then again after implementing security measures. It is noteworthy that the number of security events and incidents were drastically reduced after the security controls were applied, demonstrating their effectiveness.
+After the initial 24 hours, I applied security controls to harden the environment. This included restricting NSG traffic to only allow my admin workstation and enabling firewalls and private endpoints for Azure resources. The following results were observed:
 
-It is worth noting that if the resources within the network were heavily utilized by regular users, it is likely that more security events and alerts may have been generated within the 24-hour period following the implementation of the security controls.
+- The number of security events significantly decreased.
+- Alerts triggered by Sentinel dropped, and the flow of malicious traffic was curtailed.
+- Queries on Azure Activity Logs showed a reduction in resource deletions and security-related changes.
+- In both Admin Mode and Attacker Mode, I simulated various user behaviors, from brute force attacks to role assignments in Azure AD, and observed these activities within the logs. The logs demonstrated the effectiveness of the applied security controls in reducing security incidents and protecting the infrastructure.
